@@ -1,0 +1,110 @@
+/* Header específico para a página de Saque */
+.saque-page .page-header { /* SELETOR ATUALIZADO */
+  margin-bottom: 2rem;
+}
+
+.saque-page .page-header h1 { /* SELETOR ATUALIZADO */
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0;
+}
+
+.saque-page .page-header p { /* SELETOR ATUALIZADO */
+  font-size: 1rem;
+  color: #718096;
+  margin-top: 4px;
+}
+
+.saque-card {
+  max-width: 450px;
+  margin: 2rem auto 0 auto;
+  padding: 2.5rem;
+  text-align: center;
+}
+
+.saldo-disponivel {
+  padding-bottom: 2rem;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.saldo-disponivel span {
+  font-size: 1rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.saldo-valor {
+  font-size: 2.1rem;
+  font-weight: 800;
+  color: #25d366;
+  margin: 0.5rem 0 0 0;
+  line-height: 1;
+}
+
+.saque-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  text-align: left;
+}
+
+.saque-form label {
+  font-weight: 500;
+  color: #4b5563;
+}
+
+.saque-input-wrapper {
+  position: relative;
+}
+
+.input-prefix {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: #9ca3af;
+}
+
+.saque-input-wrapper input {
+  width: 100%;
+  padding: 1rem 1rem 1rem 4rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-sizing: border-box;
+  outline-color: #3b82f6;
+}
+
+.saque-input-wrapper input::-webkit-outer-spin-button,
+.saque-input-wrapper input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.saque-input-wrapper input[type=number] {
+  -moz-appearance: textfield;
+}
+
+.saque-button {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 1.25rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  transition: background-color 0.2s ease;
+}
+
+.saque-button:hover {
+  background-color: #2563eb;
+}

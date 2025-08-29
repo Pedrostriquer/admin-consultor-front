@@ -1,0 +1,114 @@
+.modal-backdrop {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal-content {
+  background-color: #ffffff; padding: 2rem; border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  width: 90%; max-width: 1300px; position: relative;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); } }
+
+.modal-close-button {
+  position: absolute; top: 20px; right: 20px;
+  background: none; border: none; font-size: 1.5rem;
+  color: #6b7280; cursor: pointer; z-index: 10;
+}
+
+.modal-header {
+  display: flex; align-items: center; gap: 1.5rem;
+  padding-bottom: 1.5rem; border-bottom: 1px solid #e5e7eb; padding-right: 40px;
+}
+
+.modal-avatar {
+  width: 60px; height: 60px; border-radius: 50%;
+  background-color: #3b82f6; color: white; display: flex;
+  align-items: center; justify-content: center; font-size: 2rem;
+  font-weight: bold; flex-shrink: 0;
+}
+
+.modal-client-info { flex-grow: 1; }
+.modal-client-name { margin: 0; font-size: 1.5rem; }
+.modal-client-detail { margin: 0.25rem 0 0 0; color: #6b7280; }
+
+.whatsapp-button {
+  background-color: #25d366; color: white; padding: 0.75rem 1.25rem;
+  border-radius: 8px; text-decoration: none; font-weight: 500;
+  display: flex; align-items: center; gap: 0.5rem;
+  transition: background-color 0.2s ease; white-space: nowrap;
+}
+
+.whatsapp-button:hover { background-color: #1ebe58; }
+
+.modal-stats-container {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem; margin-top: 1.5rem;
+}
+
+.stat-card {
+  background-color: #f8f9fa; border: 1px solid #e5e7eb;
+  padding: 1.25rem; border-radius: 12px; text-align: center;
+  display: flex; flex-direction: column; justify-content: center; gap: 0.5rem;
+}
+
+.stat-card span {
+  display: block; font-size: 1rem; color: #6b7280; font-weight: 500;
+}
+
+/* Nova estrutura de container para os valores */
+.stat-value-container {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+}
+
+/* Estilo unificado e correto para os números */
+.stat-value, .hash {
+  font-size: 2.75rem;
+  font-weight: 800; /* Extra-Bold */
+  line-height: 1;
+}
+
+/* Cor verde do WhatsApp */
+.shine-effect.green-text, .hash {
+  color: #25d366;
+  text-shadow: 0 0 8px rgba(37, 211, 102, 0.5);
+  font-weight: 800;
+  font-size: 1.1rem;
+
+}
+
+.modal-body { margin-top: 1.5rem; }
+
+/* ... (O resto do CSS permanece o mesmo) ... */
+.tabs { border-bottom: 1px solid #e5e7eb; margin-bottom: 1rem; }
+.tab-button { background: none; border: none; padding: 0.75rem 1rem; font-size: 1rem; font-weight: 500; color: #6b7280; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.2s ease; }
+.tab-button.active { color: #3b82f6; border-bottom-color: #3b82f6; }
+.table-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+.table-search { display: flex; align-items: center; background-color: #f8f9fa; padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid #e2e8f0; }
+.table-search input { border: none; outline: none; margin-left: 0.5rem; background: none; }
+.pagination { display: flex; align-items: center; gap: 0.5rem; }
+.pagination span { font-size: 0.9rem; color: #6b7280; white-space: nowrap; }
+.pagination button { background-color: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background-color 0.2s; }
+.pagination button:not(:disabled):hover { background-color: #f1f5f9; }
+.pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ADICIONADO DE VOLTA PARA RESPONSIVIDADE */
+.table-container { 
+  overflow-x: auto;
+  width: 100%;
+}
+
+.table-container td { padding: 1rem; }
+.progress-cell { display: flex; align-items: center; gap: 0.75rem; min-width: 150px; }
+.progress-cell span { font-weight: 500; color: #4b5563; }
+.progress-bar-bg { flex-grow: 1; height: 8px; background-color: #e5e7eb; border-radius: 4px; overflow: hidden; }
+.progress-bar-fg { height: 100%; background-color: #3b82f6; border-radius: 4px; }
