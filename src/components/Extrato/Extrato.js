@@ -1,158 +1,269 @@
-import React, { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { mockContractsData, mockConsultantWithdrawalsData } from '../../data/mockData';
-import './Extrato.css';
-
-const ITEMS_PER_PAGE = 5;
+import React, { useState, useEffect, useCallback } from "react";
+import { useAuth } from "../../Context/AuthContext";
+import consultantService from "../../dbServices/consultantService";
+import "./Extrato.css";
 
 const formatCurrency = (value) => {
   if (value === null || value === undefined) return "R$ 0,00";
-  return `R$${value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `R$${value.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 };
 
-const parseDate = (dateString) => {
-  if (!dateString || typeof dateString !== 'string') return new Date(0);
-  const [day, month, year] = dateString.split('/');
-  return new Date(Number(year), Number(month) - 1, Number(day));
+const formatDate = (dateString) => {
+  if (!dateString) return "-";
+  const options = {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  };
+  return new Date(dateString).toLocaleString("pt-BR", options);
 };
 
 const Extrato = () => {
-  const [activeTab, setActiveTab] = useState('comissoes');
-  const [sorts, setSorts] = useState({
-    comissoes: { key: 'date', direction: 'desc' },
-    saques: { key: 'date', direction: 'desc' },
+  const { user } = useAuth();
+  const [extractData, setExtractData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [pagination, setPagination] = useState({
+    pageNumber: 1,
+    totalPages: 1,
   });
-  const [pages, setPages] = useState({ comissoes: 1, saques: 1 });
+  const [filters, setFilters] = useState({ type: "all" });
 
-  // 1. Processamento inicial dos dados (só roda uma vez)
-  const processedData = useMemo(() => {
-    const commissionEvents = mockContractsData
-      .filter(c => c.status === 'Valorizando')
-      .map(c => ({
-        id: `c-${c.id}`,
-        type: 'credit',
-        description: `Comissão - Contrato #${c.id}`,
-        date: c.startDate,
-        value: c.value * 0.10,
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalDetails, setModalDetails] = useState(null);
+  const [isModalLoading, setIsModalLoading] = useState(false);
+
+  const fetchExtract = useCallback(async () => {
+    setIsLoading(true);
+    setError("");
+    try {
+      const params = {
+        ...filters,
+        pageNumber: pagination.pageNumber,
+        pageSize: 10,
+      };
+      const response = await consultantService.getConsultantExtract(params);
+      setExtractData(response.data.items || []);
+      setPagination((prev) => ({
+        ...prev,
+        totalPages:
+          Math.ceil(response.data.totalCount / response.data.pageSize) || 1,
       }));
+    } catch (err) {
+      setError("Falha ao carregar o extrato.");
+      setExtractData([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [pagination.pageNumber, filters]);
 
-    const consultantWithdrawals = mockConsultantWithdrawalsData.map(w => ({
-      ...w,
-      type: 'debit',
-    }));
+  useEffect(() => {
+    fetchExtract();
+  }, [fetchExtract]);
 
-    // Cálculos para os cards
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-
-    const incomeThisMonth = commissionEvents
-      .filter(c => {
-        const eventDate = parseDate(c.date);
-        return eventDate.getMonth() === currentMonth && eventDate.getFullYear() === currentYear;
-      })
-      .reduce((sum, c) => sum + c.value, 0);
-
-    const withdrawnThisMonth = consultantWithdrawals
-      .filter(w => {
-        const eventDate = parseDate(w.date);
-        return eventDate.getMonth() === currentMonth && eventDate.getFullYear() === currentYear;
-      })
-      .reduce((sum, w) => sum + w.value, 0);
-
-    const totalCommission = commissionEvents.reduce((sum, c) => sum + c.value, 0);
-    const totalWithdrawn = consultantWithdrawals.reduce((sum, w) => sum + w.value, 0);
-    const availableBalance = totalCommission - totalWithdrawn;
-
-    return { commissionEvents, consultantWithdrawals, incomeThisMonth, withdrawnThisMonth, availableBalance };
-  }, []);
-
-  // 2. Ordena os dados com base na seleção do usuário
-  const sortedData = useMemo(() => {
-    const sortableCommissions = [...processedData.commissionEvents];
-    const sortableWithdrawals = [...processedData.consultantWithdrawals];
-    const sortConfigComissoes = sorts.comissoes;
-    const sortConfigSaques = sorts.saques;
-
-    const sortFunction = (a, b, config) => {
-      const valA = config.key === 'date' ? parseDate(a.date).getTime() : a.value;
-      const valB = config.key === 'date' ? parseDate(b.date).getTime() : b.value;
-      if (valA < valB) return config.direction === 'asc' ? -1 : 1;
-      if (valA > valB) return config.direction === 'asc' ? 1 : -1;
-      return 0;
-    };
-    
-    sortableCommissions.sort((a, b) => sortFunction(a, b, sortConfigComissoes));
-    sortableWithdrawals.sort((a, b) => sortFunction(a, b, sortConfigSaques));
-
-    return { comissoes: sortableCommissions, saques: sortableWithdrawals };
-  }, [processedData, sorts]);
-  
-  // 3. Pagina os dados ordenados
-  const activeList = sortedData[activeTab];
-  const currentPage = pages[activeTab];
-  const totalPages = Math.ceil(activeList.length / ITEMS_PER_PAGE);
-  const paginatedItems = activeList.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
-
-  const handleSortChange = (e) => {
-    const [key, direction] = e.target.value.split('-');
-    setSorts(prev => ({ ...prev, [activeTab]: { key, direction } }));
-    setPages(prev => ({ ...prev, [activeTab]: 1 }));
+  const handleFilterChange = (e) => {
+    setFilters({ type: e.target.value });
+    setPagination((prev) => ({ ...prev, pageNumber: 1 }));
   };
 
-  const changePage = (direction) => {
-    setPages(prev => ({ ...prev, [activeTab]: Math.max(1, Math.min(prev[activeTab] + direction, totalPages)) }));
+  const handlePageChange = (newPage) => {
+    if (newPage > 0 && newPage <= pagination.totalPages) {
+      setPagination((prev) => ({ ...prev, pageNumber: newPage }));
+    }
+  };
+
+  const handleRowClick = async (item) => {
+    setSelectedItem(item);
+    setIsModalOpen(true);
+    setIsModalLoading(true);
+    setModalDetails(null);
+    try {
+      let details;
+      if (item.type === "Credit") {
+        const response = await consultantService.getIndicationDetails(
+          item.transactionId
+        );
+        details = { ...response.data, type: "Comissão" };
+      } else {
+        const response = await consultantService.getWithdrawDetails(
+          item.transactionId
+        );
+        details = { ...response.data, type: "Saque" };
+      }
+      setModalDetails(details);
+    } catch (err) {
+      console.error("Failed to fetch details", err);
+    } finally {
+      setIsModalLoading(false);
+    }
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedItem(null);
+    setModalDetails(null);
   };
 
   return (
     <div className="extrato-page">
-      <div className="page-header"><h1>Extrato</h1><p>Acompanhe suas movimentações de comissões e saques.</p></div>
-      
-      <div className="summary-cards-grid">
-        <div className="card-base summary-card"><span>Entrou este Mês</span><strong>{formatCurrency(processedData.incomeThisMonth)}</strong></div>
-        <div className="card-base summary-card"><span>Saiu este Mês</span><strong>{formatCurrency(processedData.withdrawnThisMonth)}</strong></div>
-        <Link to="/saque" className="card-base summary-card clickable">
-          <span>Disponível para Saque</span>
-          <strong>{formatCurrency(processedData.availableBalance)}</strong>
-          <div className="card-link"><i className="fa-solid fa-arrow-right"></i> Ir para Saque</div>
-        </Link>
+      <div className="page-header">
+        <h1>Extrato Financeiro</h1>
+        <p>Acompanhe suas movimentações de comissões e saques.</p>
       </div>
 
       <div className="card-base extrato-content">
-        <div className="tabs"><button className={`tab-button ${activeTab === 'comissoes' ? 'active' : ''}`} onClick={() => setActiveTab('comissoes')}>Comissões Recebidas</button><button className={`tab-button ${activeTab === 'saques' ? 'active' : ''}`} onClick={() => setActiveTab('saques')}>Saques Realizados</button></div>
-        
         <div className="extrato-controls">
-          <div className="sort-filter">
-            <label htmlFor="sort-select">Ordenar por:</label>
-            <select id="sort-select" value={`${sorts[activeTab].key}-${sorts[activeTab].direction}`} onChange={handleSortChange}>
-              <option value="date-desc">Mais Recentes</option>
-              <option value="date-asc">Mais Antigos</option>
-              <option value="value-desc">Maior Valor</option>
-              <option value="value-asc">Menor Valor</option>
+          <div className="filter-group">
+            <label htmlFor="type-filter">Mostrar:</label>
+            <select
+              id="type-filter"
+              value={filters.type}
+              onChange={handleFilterChange}
+            >
+              <option value="all">Todas as transações</option>
+              <option value="credit">Apenas Entradas</option>
+              <option value="debit">Apenas Saídas</option>
             </select>
           </div>
-          <div className="pagination">
-            <button onClick={() => changePage(-1)} disabled={currentPage === 1}><i className="fa-solid fa-chevron-left"></i></button>
-            <span>Página {currentPage} de {totalPages}</span>
-            <button onClick={() => changePage(1)} disabled={currentPage === totalPages}><i className="fa-solid fa-chevron-right"></i></button>
-          </div>
+          {error && <p className="error-message">{error}</p>}
         </div>
-        
-        <div className="table-container">
-          <table>
-            <thead><tr><th>Descrição</th><th>Data</th><th>Valor</th></tr></thead>
+
+        <div className="table-wrapper">
+          <table className="extrato-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Descrição</th>
+                <th className="text-right">Valor</th>
+              </tr>
+            </thead>
             <tbody>
-              {paginatedItems.length > 0 ? paginatedItems.map(item => (
-                <tr key={item.id}>
-                  <td>{item.description}</td>
-                  <td>{item.date}</td>
-                  <td><span className={`type-indicator type-${item.type}`}>{item.type === 'credit' ? '+' : '-'} {formatCurrency(item.value)}</span></td>
+              {isLoading ? (
+                <tr>
+                  <td colSpan="3" className="loading-cell">
+                    Carregando...
+                  </td>
                 </tr>
-              )) : (<tr><td colSpan="3">Nenhum registro encontrado.</td></tr>)}
+              ) : extractData.length > 0 ? (
+                extractData.map((item) => (
+                  <tr
+                    key={`${item.type}-${item.transactionId}`}
+                    onClick={() => handleRowClick(item)}
+                    className="clickable-row"
+                  >
+                    <td>{formatDate(item.date)}</td>
+                    <td>{item.description}</td>
+                    <td
+                      className={`text-right amount-${item.type.toLowerCase()}`}
+                    >
+                      {item.type === "Credit" ? "+" : "-"}{" "}
+                      {formatCurrency(item.amount)}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="3" className="empty-cell">
+                    Nenhuma transação encontrada.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
+
+        <div className="pagination-controls">
+          <button
+            onClick={() => handlePageChange(pagination.pageNumber - 1)}
+            disabled={pagination.pageNumber === 1 || isLoading}
+          >
+            Anterior
+          </button>
+          <span>
+            Página {pagination.pageNumber} de {pagination.totalPages}
+          </span>
+          <button
+            onClick={() => handlePageChange(pagination.pageNumber + 1)}
+            disabled={
+              pagination.pageNumber === pagination.totalPages || isLoading
+            }
+          >
+            Próximo
+          </button>
+        </div>
       </div>
+
+      {isModalOpen && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="close-modal-btn" onClick={closeModal}>
+              &times;
+            </button>
+            <h3>Detalhes da Transação</h3>
+            {isModalLoading ? (
+              <p>Carregando detalhes...</p>
+            ) : modalDetails ? (
+              <div className="modal-details-grid">
+                <div className="detail-item">
+                  <span>Tipo:</span>
+                  <strong>{modalDetails.type}</strong>
+                </div>
+                <div className="detail-item">
+                  <span>ID da Transação:</span>
+                  <strong>#{modalDetails.id}</strong>
+                </div>
+                <div className="detail-item">
+                  <span>Data:</span>
+                  <strong>{formatDate(modalDetails.dateCreated)}</strong>
+                </div>
+                {modalDetails.paidDate && (
+                  <div className="detail-item">
+                    <span>Data do Pagamento:</span>
+                    <strong>{formatDate(modalDetails.paidDate)}</strong>
+                  </div>
+                )}
+                <div className="detail-item">
+                  <span>Valor:</span>
+                  <strong
+                    className={`amount-${
+                      modalDetails.type === "Saque" ? "debit" : "credit"
+                    }`}
+                  >
+                    {formatCurrency(
+                      modalDetails.commissionAmount ||
+                        modalDetails.amountWithdrawn
+                    )}
+                  </strong>
+                </div>
+                {modalDetails.client && (
+                  <div className="detail-item">
+                    <span>Cliente:</span>
+                    <strong>{modalDetails.client.name}</strong>
+                  </div>
+                )}
+                {modalDetails.contractId && (
+                  <div className="detail-item">
+                    <span>Contrato Ref.:</span>
+                    <strong>#{modalDetails.contractId}</strong>
+                  </div>
+                )}
+                <div className="detail-item full-width">
+                  <span>Descrição:</span>
+                  <p>{modalDetails.description}</p>
+                </div>
+              </div>
+            ) : (
+              <p>Não foi possível carregar os detalhes.</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,16 +1,18 @@
-import React, { useMemo } from 'react';
-import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
-import { mockClientsData, mockContractsData, consultantsList, LOGGED_CONSULTANT_ID } from '../../data/mockData';
-import './Home.css';
+import React, { useState, useEffect, useContext } from "react";
+import { useAuth } from "../../Context/AuthContext";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
+import { useNavigate } from "react-router-dom";
+import consultantService from "../../dbServices/consultantService";
+import "./Home.css";
 
-// Helper para parsear datas
-const parseDate = (dateString) => {
-  if (!dateString || typeof dateString !== 'string') return new Date(0);
-  const [day, month, year] = dateString.split('/');
-  return new Date(Number(year), Number(month) - 1, Number(day));
-};
-
-// Componente customizado para a barra arredondada
 const RoundedBar = (props) => {
   const { x, y, width, height, fill } = props;
   const radius = 8;
@@ -26,7 +28,6 @@ const RoundedBar = (props) => {
   );
 };
 
-// Função para formatar valores monetários
 const formatCurrency = (value) => {
   if (value === null || value === undefined) return "R$ 0,00";
   return `R$${value.toLocaleString("pt-BR", {
@@ -35,56 +36,119 @@ const formatCurrency = (value) => {
   })}`;
 };
 
+const KpiCardSkeleton = () => (
+  <div className="card-base kpi-card skeleton">
+    <div className="kpi-content">
+      <div className="skeleton-text short"></div>
+      <div className="skeleton-text long"></div>
+    </div>
+  </div>
+);
+
 const Home = () => {
-  const processedData = useMemo(() => {
-    // --- Lógica para os cards e lista de clientes ---
-    const clientsWithStats = mockClientsData.map(client => {
-      const clientContracts = mockContractsData.filter(c => c.clientId === client.id && c.status === 'Valorizando');
-      const totalInvested = clientContracts.reduce((sum, c) => sum + c.value, 0);
-      return { ...client, totalInvested };
-    });
-    clientsWithStats.sort((a, b) => b.totalInvested - a.totalInvested);
-    const bestClients = clientsWithStats.slice(0, 4);
-    const topClientGoal = bestClients[0]?.totalInvested || 1;
-    const totalClients = mockClientsData.length;
-    const totalContracts = mockContractsData.filter(c => c.status === 'Valorizando').length;
-    const actualMonthIncome = clientsWithStats.reduce((sum, c) => sum + c.totalInvested, 0) * 0.05; 
-    const previousMonthIncome = actualMonthIncome * 0.85;
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [data, setData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-    // --- Lógica para o Ranking de Consultores ---
-    const currentYear = new Date().getFullYear();
-    const rankedConsultants = consultantsList.map(consultant => {
-      const salesThisYear = mockContractsData
-        .filter(c => c.consultantId === consultant.id && parseDate(c.startDate).getFullYear() === currentYear)
-        .reduce((sum, c) => sum + c.value, 0);
-      return { ...consultant, totalSales: salesThisYear };
-    }).sort((a, b) => b.totalSales - a.totalSales)
-      .map((c, index) => ({ ...c, rank: index + 1 }));
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const response = await consultantService.getDashboardData();
+        setData(response.data);
+      } catch (error) {
+        console.error("Erro ao buscar dados do dashboard:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
 
-    const top10Consultants = rankedConsultants.slice(0, 5);
-    const loggedConsultantInfo = rankedConsultants.find(c => c.id === LOGGED_CONSULTANT_ID);
-    const isLoggedConsultantInTop10 = loggedConsultantInfo && loggedConsultantInfo.rank <= 5;
-    
-    return { bestClients, topClientGoal, totalClients, totalContracts, actualMonthIncome, previousMonthIncome, top10Consultants, loggedConsultantInfo, isLoggedConsultantInTop10 };
-  }, []);
+  if (isLoading) {
+    return (
+      <div className="home-container">
+        <header className="dashboard-header">
+          <h1 className="header-h1">Bem-vindo, {user?.name}!</h1>
+          <p className="header-p">Carregando seus dados de desempenho...</p>
+        </header>
+        <section className="kpi-grid">
+          <KpiCardSkeleton />
+          <KpiCardSkeleton />
+          <KpiCardSkeleton />
+          <KpiCardSkeleton />
+        </section>
+        <section className="main-grid">
+          <div className="card-base main-chart-card">
+            <div className="skeleton-chart"></div>
+          </div>
+          <div className="card-base clients-card">
+            <h3 className="card-title">Meus Melhores Clientes</h3>
+            <ul className="clients-list">
+              {[...Array(4)].map((_, i) => (
+                <li key={i} className="client-item skeleton">
+                  <div className="skeleton-avatar"></div>
+                  <div className="client-info">
+                    <div className="skeleton-text short"></div>
+                    <div className="skeleton-bar"></div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+        <section className="card-base ranking-section">
+          <h3 className="card-title">Ranking de Consultores (Vendas no Ano)</h3>
+          <ul className="consultant-ranking-list">
+            {[...Array(5)].map((_, i) => (
+              <li key={i} className="client-item skeleton">
+                <div className="skeleton-avatar"></div>
+                <div className="client-info">
+                  <div className="skeleton-text long"></div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
+    );
+  }
+
+  if (!data)
+    return (
+      <div className="home-container">
+        <p>Não foi possível carregar os dados do dashboard.</p>
+      </div>
+    );
+
+  const topClientGoal = data.bestClients?.[0]?.totalInvested || 1;
+  const isLoggedConsultantInTop5 =
+    data.currentConsultantRankInfo && data.currentConsultantRankInfo.rank <= 5;
 
   const kpiData = [
-    { title: "Quantidade de Clientes", value: processedData.totalClients, data: [{ v: 1 }, { v: 2 }, { v: 2 }, { v: 3 }, { v: 4 }] },
-    { title: "Contratos Ativos", value: processedData.totalContracts, data: [{ v: 4 }, { v: 6 }, { v: 9 }, { v: 15 }, { v: 20 }] },
-    { title: "Faturamento Mês Atual", value: `R$ ${(processedData.actualMonthIncome / 1000).toFixed(1)}k`, data: [{ v: 20000 }, { v: 18000 }, { v: 35000 }, { v: 45800 }] },
-    { title: "Faturamento Mês Anterior", value: `R$ ${(processedData.previousMonthIncome / 1000).toFixed(1)}k`, data: [{ v: 15000 }, { v: 19000 }, { v: 25000 }, { v: 32100 }] },
-  ];
-  
-  const barChartData = [
-    { month: 'jan.', Faturamento: 10 }, { month: 'fev.', Faturamento: 25 }, { month: 'mar.', Faturamento: 18 }, { month: 'abr.', Faturamento: 50 },
-    { month: 'mai.', Faturamento: 98 }, { month: 'jun.', Faturamento: 60 }, { month: 'jul.', Faturamento: 75 },
+    { title: "Meus Clientes", value: data.totalClients },
+    {
+      title: "Comissão Recebida (Mês)",
+      value: formatCurrency(data.totalCommissionThisMonth),
+    },
+    {
+      title: "Comissão Pendente (Mês)",
+      value: formatCurrency(data.totalPendingCommissionThisMonth),
+    },
+    {
+      title: "Comissão Recebida (Ano)",
+      value: formatCurrency(data.totalCommissionThisYear),
+    },
   ];
 
   return (
     <div className="home-container">
       <header className="dashboard-header">
-        <h1 className="header-h1">Dashboard</h1>
-        <p className="header-p">Visão geral do desempenho dos contratos</p>
+        <h1 className="header-h1">Bem-vindo, {user?.name}!</h1>
+        <p className="header-p">Aqui está um resumo do seu desempenho.</p>
       </header>
 
       <section className="kpi-grid">
@@ -94,67 +158,143 @@ const Home = () => {
               <span className="kpi-title">{kpi.title}</span>
               <span className="kpi-value">{kpi.value}</span>
             </div>
-            <div className="kpi-chart">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={kpi.data} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
-                  <defs><linearGradient id="gradient-blue" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} /><stop offset="95%" stopColor="#3b82f6" stopOpacity={0} /></linearGradient></defs>
-                  <Area type="monotone" dataKey="v" stroke="#3b82f6" strokeWidth={2.5} fill="url(#gradient-blue)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
           </div>
         ))}
       </section>
 
       <section className="main-grid">
         <div className="card-base main-chart-card">
-          <h3 className="card-title">Visão Geral do Faturamento</h3>
+          <h3 className="card-title">
+            Visão Geral de Comissões Pagas (Últimos 6 meses)
+          </h3>
           <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={barChartData} margin={{ top: 20, right: 20, left: -10, bottom: 5 }}>
+            <BarChart
+              data={data.monthlyCommissionData}
+              margin={{ top: 20, right: 20, left: -10, bottom: 5 }}
+            >
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="month" tickLine={false} axisLine={false} />
-              <YAxis tickFormatter={(val) => `R$${val}k`} tickLine={false} axisLine={false} />
-              <Tooltip cursor={{ fill: "transparent" }} contentStyle={{ background: "rgba(255, 255, 255, 0.7)", backdropFilter: "blur(10px)", border: "1px solid rgba(255, 255, 255, 0.2)", borderRadius: "12px", }} formatter={(value) => `${formatCurrency(value * 1000)}`} />
-              <Bar dataKey="Faturamento" shape={<RoundedBar />} fill="#3b82f6" barSize={30} />
+              <YAxis
+                tickFormatter={(val) => `R$${val / 1000}k`}
+                tickLine={false}
+                axisLine={false}
+              />
+              <Tooltip
+                cursor={{ fill: "transparent" }}
+                contentStyle={{
+                  background: "rgba(255, 255, 255, 0.7)",
+                  backdropFilter: "blur(10px)",
+                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                  borderRadius: "12px",
+                }}
+                formatter={(value) => `${formatCurrency(value)}`}
+              />
+              <Bar
+                dataKey="commission"
+                name="Comissão Paga"
+                shape={<RoundedBar />}
+                fill="#3b82f6"
+                barSize={30}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>
         <div className="card-base clients-card">
-          <h3 className="card-title">Melhores Clientes</h3>
+          <h3 className="card-title">
+            Meus Melhores Clientes (Investimento Ativo)
+          </h3>
           <ul className="clients-list">
-            {processedData.bestClients.map((client) => (
-              <li key={client.id} className="client-item">
-                <div className="client-avatar">{client.name.charAt(0)}</div>
-                <div className="client-info"><span className="client-name">{client.name}</span><div className="progress-bar"><div className="progress" style={{ width: `${(client.totalInvested / processedData.topClientGoal) * 100}%` }}></div></div></div>
-                <span className="client-sales">{formatCurrency(client.totalInvested)}</span>
+            {data.bestClients.map((client) => (
+              <li
+                key={client.clientId}
+                className="client-item clickable-row"
+                onClick={() =>
+                  navigate(`/platform/clientes/${client.clientId}`)
+                }
+              >
+                <div className="client-avatar">
+                  {client.profilePictureUrl ? (
+                    <img
+                      src={client.profilePictureUrl}
+                      alt={client.clientName}
+                      className="client-avatar-img"
+                    />
+                  ) : (
+                    <>
+                      <span style={{fontSize: 18}}>{client.clientName.charAt(0)}</span>
+                    </>
+                  )}
+                </div>
+                <div className="client-info">
+                  <span className="client-name">{client.clientName}</span>
+                  <div className="progress-bar">
+                    <div
+                      className="progress"
+                      style={{
+                        width: `${
+                          (client.totalInvested / topClientGoal) * 100
+                        }%`,
+                      }}
+                    ></div>
+                  </div>
+                </div>
+                <span className="client-sales">
+                  {formatCurrency(client.totalInvested)}
+                </span>
               </li>
             ))}
+            {data.bestClients.length === 0 && (
+              <p className="placeholder-text">
+                Nenhum cliente ativo encontrado.
+              </p>
+            )}
           </ul>
         </div>
       </section>
 
       <section className="card-base ranking-section">
-        <h3 className="card-title">Ranking de Consultores (Vendas no Ano)</h3>
+        <h3 className="card-title">
+          Ranking de Consultores (Vendas Pagas no Ano)
+        </h3>
         <ol className="consultant-ranking-list">
-          {processedData.top10Consultants.map(consultant => (
-            <li key={consultant.id} className={`consultant-item ${consultant.id === LOGGED_CONSULTANT_ID ? 'highlight' : ''}`}>
+          {data.ranking.map((consultant) => (
+            <li
+              key={consultant.id}
+              className={`consultant-item ${
+                consultant.id === user.id ? "highlight" : ""
+              }`}
+            >
               <span className="rank-number">{consultant.rank}º</span>
-              <div className="rank-avatar">{consultant.avatar}</div>
+              <div className="rank-avatar">{consultant.name.charAt(0)}</div>
               <span className="rank-name">{consultant.name}</span>
-              <span className="rank-sales">{formatCurrency(consultant.totalSales)}</span>
+              <span className="rank-sales">
+                {formatCurrency(consultant.totalSales)}
+              </span>
             </li>
           ))}
-          
-          {!processedData.isLoggedConsultantInTop10 && processedData.loggedConsultantInfo && (
+          {!isLoggedConsultantInTop5 && data.currentConsultantRankInfo && (
             <>
               <div className="rank-separator"></div>
               <li className="consultant-item highlight">
-                <span className="rank-number">{processedData.loggedConsultantInfo.rank}º</span>
-                <div className="rank-avatar">{processedData.loggedConsultantInfo.avatar}</div>
-                <span className="rank-name">{processedData.loggedConsultantInfo.name}</span>
-                <span className="rank-sales">{formatCurrency(processedData.loggedConsultantInfo.totalSales)}</span>
+                <span className="rank-number">
+                  {data.currentConsultantRankInfo.rank}º
+                </span>
+                <div className="rank-avatar">
+                  {data.currentConsultantRankInfo.name.charAt(0)}
+                </div>
+                <span className="rank-name">
+                  {data.currentConsultantRankInfo.name}
+                </span>
+                <span className="rank-sales">
+                  {formatCurrency(data.currentConsultantRankInfo.totalSales)}
+                </span>
               </li>
             </>
+          )}
+          {data.ranking.length === 0 && (
+            <p className="placeholder-text">
+              Nenhum consultor com vendas pagas este ano.
+            </p>
           )}
         </ol>
       </section>

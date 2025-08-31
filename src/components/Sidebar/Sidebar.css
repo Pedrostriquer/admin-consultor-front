@@ -112,10 +112,10 @@
 }
 
 a.menu-item {
-    text-decoration: none; /* Adicione isso para remover o sublinhado do link */
+    text-decoration: none;
 }
 
-a.menu-item.active { /* Mude aqui */
+a.menu-item.active {
     background-color: #3b82f6;
     color: white;
 }
@@ -124,4 +124,4 @@ a.profile-link {
     text-decoration: none;
     color: inherit;
     display: block;
-  }
+}
