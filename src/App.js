@@ -1,9 +1,11 @@
-import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from './Context/AuthContext';
-import Login from './components/Login/Login';
-import Platform from './components/Platform/Platform';
-import LoadingScreen from './components/LoadingScreen/LoadingScreen';
+import React from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { useAuth } from "./Context/AuthContext";
+import Login from "./components/Login/Login";
+import Platform from "./components/Platform/Platform";
+import LoadingScreen from "./components/LoadingScreen/LoadingScreen";
+import ForgotPassword from "./components/ForgotPassword/ForgotPassword"; // <-- IMPORTAR
+import ResetPassword from "./components/ResetPassword/ResetPassword";
 
 function PrivateRoute({ children }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -17,13 +19,15 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      <Route 
-        path="/platform/*" 
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route
+        path="/platform/*"
         element={
           <PrivateRoute>
             <Platform />
           </PrivateRoute>
-        } 
+        }
       />
       <Route path="*" element={<Navigate to="/platform/dashboard" />} />
     </Routes>
