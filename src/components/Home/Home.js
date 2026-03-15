@@ -267,9 +267,9 @@ const Home = () => {
               <span className="rank-number">{consultant.rank}º</span>
               <div className="rank-avatar">{consultant.name.charAt(0)}</div>
               <span className="rank-name">{consultant.name}</span>
-              <span className="rank-sales">
+              {/* <span className="rank-sales">
                 {formatCurrency(consultant.totalSales)}
-              </span>
+              </span> */}
             </li>
           ))}
           {!isLoggedConsultantInTop5 && data.currentConsultantRankInfo && (
