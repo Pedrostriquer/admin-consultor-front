@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../../Context/AuthContext";
 import {
   BarChart,
@@ -221,7 +221,9 @@ const Home = () => {
                     />
                   ) : (
                     <>
-                      <span style={{fontSize: 18}}>{client.clientName.charAt(0)}</span>
+                      <span style={{ fontSize: 18 }}>
+                        {client.clientName.charAt(0)}
+                      </span>
                     </>
                   )}
                 </div>
@@ -261,15 +263,12 @@ const Home = () => {
             <li
               key={consultant.id}
               className={`consultant-item ${
-                consultant.id === user.id ? "highlight" : ""
+                consultant.id === user?.id ? "highlight" : ""
               }`}
             >
               <span className="rank-number">{consultant.rank}º</span>
               <div className="rank-avatar">{consultant.name.charAt(0)}</div>
               <span className="rank-name">{consultant.name}</span>
-              {/* <span className="rank-sales">
-                {formatCurrency(consultant.totalSales)}
-              </span> */}
             </li>
           ))}
           {!isLoggedConsultantInTop5 && data.currentConsultantRankInfo && (

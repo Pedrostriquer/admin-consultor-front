@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useAuth } from "../../Context/AuthContext";
 import consultantService from "../../dbServices/consultantService";
 import "./Extrato.css";
 
@@ -24,7 +23,6 @@ const formatDate = (dateString) => {
 };
 
 const Extrato = () => {
-  const { user } = useAuth();
   const [extractData, setExtractData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -34,7 +32,6 @@ const Extrato = () => {
   });
   const [filters, setFilters] = useState({ type: "all" });
 
-  const [selectedItem, setSelectedItem] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalDetails, setModalDetails] = useState(null);
   const [isModalLoading, setIsModalLoading] = useState(false);
@@ -79,7 +76,6 @@ const Extrato = () => {
   };
 
   const handleRowClick = async (item) => {
-    setSelectedItem(item);
     setIsModalOpen(true);
     setIsModalLoading(true);
     setModalDetails(null);
@@ -106,7 +102,6 @@ const Extrato = () => {
 
   const closeModal = () => {
     setIsModalOpen(false);
-    setSelectedItem(null);
     setModalDetails(null);
   };
 
